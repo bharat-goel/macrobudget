@@ -1,0 +1,7 @@
+interface,daily,1,FAIL,skip,3,83
+interface,daily,2,FAIL,skip,3,79
+interface,daily,3,FAIL,skip,3,75
+interface-named,daily,1,pass,pass,2,53
+interface-named,daily,2,pass,pass,2,50
+interface-named,daily,3,pass,pass,2,56
+--- results in results/20261110T091906 ---

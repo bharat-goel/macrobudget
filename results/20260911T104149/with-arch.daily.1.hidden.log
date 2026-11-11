@@ -1,0 +1,14 @@
+✔ hidden: day total and remaining (1.047958ms)
+✔ hidden: net carbs floored once on the total (0.064416ms)
+✔ hidden: net carbs clamp at zero on the total (0.038125ms)
+✔ hidden: remaining is not clamped (0.077416ms)
+✔ hidden: empty day (0.049708ms)
+✔ hidden: multi-serving portions (0.055417ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 63.303042

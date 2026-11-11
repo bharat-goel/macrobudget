@@ -1,0 +1,51 @@
+qtask: attempt 1/3 -- asking google/gemma-4-12b-qat ...
+qtask:   720 in / 402 out in 41s (stop=end_turn)
+qtask:   running check: node --test 'test/visible/quantity.test.js'
+qtask:   check FAILED
+qtask: attempt 2/3 -- asking google/gemma-4-12b-qat ...
+qtask:   1660 in / 418 out in 46s (stop=end_turn)
+qtask:   running check: node --test 'test/visible/quantity.test.js'
+qtask:   check FAILED
+qtask: attempt 3/3 -- asking google/gemma-4-12b-qat ...
+qtask:   1669 in / 418 out in 48s (stop=end_turn)
+qtask:   running check: node --test 'test/visible/quantity.test.js'
+qtask:   check FAILED
+
+qtask: FAIL after 3 attempt(s). src/quantity.js restored; last attempt saved to quantity.js.qtask-rej
+--- tail of the failing check ---
+✔ plain gram form (0.684334ms)
+✔ leading and trailing whitespace is trimmed (0.056583ms)
+✔ multiplier form (0.050375ms)
+✔ serving form uses servingGrams (0.10875ms)
+✔ non-string spec throws TypeError (0.219125ms)
+✖ malformed spec throws SyntaxError (0.41375ms)
+✔ well-formed but zero grams throws RangeError (0.085042ms)
+✔ serving form with no declared serving throws RangeError (0.044292ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 7
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 87.965792
+
+✖ failing tests:
+
+test at test/visible/quantity.test.js:30:1
+✖ malformed spec throws SyntaxError (0.41375ms)
+  AssertionError [ERR_ASSERTION]: Missing expected exception (SyntaxError): expected SyntaxError for "3 x 30g"
+      at TestContext.<anonymous> (file://./test/visible/quantity.test.js:32:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    operator: 'throws',
+    diff: 'simple'
+  }
+

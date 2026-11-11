@@ -1,0 +1,13 @@
+qtask: check runs in .
+qtask: attempt 1/3 -- asking google/gemma-4-12b-qat ...
+qtask:   720 in / 372 out in 37s (stop=end_turn)
+qtask:   running check: node --test 'test/visible/quantity.test.js'
+qtask:   check FAILED
+qtask: attempt 2/3 -- asking google/gemma-4-12b-qat ...
+qtask:   1626 in / 547 out in 57s (stop=end_turn)
+qtask:   running check: node --test 'test/visible/quantity.test.js'
+qtask:   check FAILED
+qtask: attempt 3/3 -- asking google/gemma-4-12b-qat ...
+qtask:   1757 in / 546 out in 60s (stop=end_turn)
+qtask:   running check: node --test 'test/visible/quantity.test.js'
+qtask: PASS -- src/quantity.js written and the check succeeded.

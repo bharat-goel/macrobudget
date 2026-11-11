@@ -1,0 +1,253 @@
+#!/usr/bin/env python3
+"""qtask -- hand one small, test-verified coding task to a local LM Studio model.
+
+The point is to spend zero Claude tokens on the task body. You (or Claude) supply
+a failing test; qtask makes the local model write only the implementation, then
+runs the test. The test is the gate -- nobody reads the model's code unless it fails.
+
+    qtask --task "Implement slugify to satisfy the test" \
+          --file src/lib/slug.ts \
+          --check "npx vitest run src/lib/slug.test.ts" \
+          --context src/lib/slug.test.ts
+
+On failure the target file is restored and the rejected attempt is written to
+<file>.qtask-rej so you can look at what it tried.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import time
+import urllib.error
+import urllib.request
+
+DEFAULT_URL = os.environ.get("QTASK_URL", "http://127.0.0.1:1234")
+DEFAULT_MODEL = os.environ.get("QTASK_MODEL", "google/gemma-4-12b-qat")
+
+# Kept deliberately short. Every token here is prompt-processing time, and the
+# local model degrades fast once it starts narrating its own uncertainty.
+SYSTEM = (
+    "You are a code generator. Output ONLY the complete contents of the target file, "
+    "inside a single fenced code block. No explanation, no commentary, no alternatives. "
+    "Do not describe your reasoning in comments. If unsure, pick the simplest correct "
+    "implementation and commit to it."
+)
+
+
+def die(msg: str, code: int = 2):
+    print(f"qtask: {msg}", file=sys.stderr)
+    sys.exit(code)
+
+
+def call_model(url: str, model: str, prompt: str, max_tokens: int, timeout: int) -> str:
+    payload = {
+        "model": model,
+        "max_tokens": max_tokens,
+        "system": SYSTEM,
+        "messages": [{"role": "user", "content": prompt}],
+    }
+    req = urllib.request.Request(
+        f"{url}/v1/messages",
+        data=json.dumps(payload).encode(),
+        headers={"Content-Type": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            body = r.read().decode()
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode()[:400]
+        die(f"model returned HTTP {e.code}: {detail}")
+    except urllib.error.URLError as e:
+        die(f"cannot reach LM Studio at {url} ({e.reason}). Is the server running? `lms server start`")
+    except TimeoutError:
+        die(f"model timed out after {timeout}s -- try a smaller task or raise --timeout")
+
+    d = json.loads(body, strict=False)
+    if d.get("type") == "error":
+        die(f"model error: {d.get('error', {}).get('message', body[:300])}")
+    stop = d.get("stop_reason")
+    usage = d.get("usage", {})
+    text = "".join(b.get("text", "") for b in d.get("content", []) if b.get("type") == "text")
+    return text, stop, usage
+
+
+CODE_FENCE = re.compile(r"```[a-zA-Z0-9_+-]*\n(.*?)(?:```|\Z)", re.S)
+
+
+def extract_code(text: str) -> str | None:
+    """Pull the file body out of the reply. Prefer the longest fenced block."""
+    blocks = CODE_FENCE.findall(text)
+    if blocks:
+        return max(blocks, key=len).strip("\n") + "\n"
+    # No fence at all: if it looks like code rather than prose, take it whole.
+    stripped = text.strip()
+    if stripped and not stripped.lower().startswith(("here", "sure", "i ", "the ", "to ")):
+        return stripped + "\n"
+    return None
+
+
+def run_check(cmd: str, cwd: str, timeout: int) -> tuple[bool, str]:
+    try:
+        p = subprocess.run(
+            cmd, shell=True, cwd=cwd, capture_output=True, text=True, timeout=timeout
+        )
+    except subprocess.TimeoutExpired:
+        return False, f"check timed out after {timeout}s"
+    out = (p.stdout or "") + (p.stderr or "")
+    return p.returncode == 0, out
+
+
+# Markers that identify a project root. The --check command is almost always
+# written relative to the root ("npm test", "node --test test/foo.test.js"),
+# never relative to the directory the target file happens to live in.
+ROOT_MARKERS = (
+    "package.json", "pyproject.toml", "setup.py", "Cargo.toml", "go.mod",
+    "deno.json", "deno.jsonc", "Gemfile", "pom.xml", "build.gradle", ".git",
+)
+
+
+def find_project_root(target: str) -> str:
+    """Nearest ancestor of `target` that looks like a project root.
+
+    Falls back to the file's own directory when nothing matches, which is the
+    old behaviour -- wrong for most projects, but never worse than it was.
+    """
+    here = os.path.dirname(os.path.abspath(target)) or "."
+    d = here
+    while True:
+        if any(os.path.exists(os.path.join(d, m)) for m in ROOT_MARKERS):
+            return d
+        parent = os.path.dirname(d)
+        if parent == d:
+            return here
+        d = parent
+
+
+def build_prompt(task: str, target: str, current: str | None, contexts: list[tuple[str, str]],
+                 failure: str | None) -> str:
+    parts = [f"Task: {task}", f"Target file: {target}"]
+    for name, body in contexts:
+        parts.append(f"\nContext file `{name}`:\n```\n{body}\n```")
+    if current is not None:
+        parts.append(f"\nCurrent contents of `{target}`:\n```\n{current}\n```")
+    if failure:
+        # Tail only -- test runners are verbose and the model has a small budget.
+        parts.append(
+            "\nYour previous attempt FAILED this check. Fix it. Output the whole file again.\n"
+            f"```\n{failure[-2500:]}\n```"
+        )
+    parts.append(f"\nOutput the complete new contents of `{target}` in one code block.")
+    return "\n".join(parts)
+
+
+def main():
+    ap = argparse.ArgumentParser(prog="qtask", description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--task", required=True, help="what to do, in one or two sentences")
+    ap.add_argument("--file", required=True, help="file the model should write")
+    ap.add_argument("--check", required=True, help="shell command that must exit 0 (the gate)")
+    ap.add_argument("--context", action="append", default=[],
+                    help="extra file to show the model (repeatable); the test usually goes here")
+    ap.add_argument("--retries", type=int, default=1, help="retries after a failed check (default 1)")
+    ap.add_argument("--max-tokens", type=int, default=1500)
+    ap.add_argument("--timeout", type=int, default=600, help="per model call, seconds")
+    ap.add_argument("--check-timeout", type=int, default=300)
+    ap.add_argument("--url", default=DEFAULT_URL)
+    ap.add_argument("--model", default=DEFAULT_MODEL)
+    ap.add_argument("--cwd", default=None, help="working dir for --check (default: nearest ancestor holding package.json/.git/etc, else the file's directory)")
+    ap.add_argument("--dry-run", action="store_true", help="print the prompt and exit")
+    args = ap.parse_args()
+
+    target = os.path.abspath(args.file)
+    workdir = args.cwd or find_project_root(target)
+
+    contexts = []
+    for c in args.context:
+        if not os.path.isfile(c):
+            die(f"context file not found: {c}")
+        contexts.append((os.path.basename(c), open(c).read()))
+
+    current = open(target).read() if os.path.isfile(target) else None
+    rel = os.path.relpath(target, workdir)
+
+    prompt = build_prompt(args.task, rel, current, contexts, None)
+    if args.dry_run:
+        print(prompt)
+        return
+
+    backup = target + ".qtask-bak"
+    if current is not None:
+        shutil.copy2(target, backup)
+
+    failure = None
+    last_attempt = None
+    try:
+        for attempt in range(args.retries + 1):
+            label = f"attempt {attempt + 1}/{args.retries + 1}"
+            if attempt:
+                # Show the model what it actually wrote last time, not the original
+                # file -- otherwise it cannot see which line the error refers to.
+                prompt = build_prompt(args.task, rel, last_attempt, contexts, failure)
+
+            t0 = time.time()
+            if attempt == 0:
+                print(f"qtask: check runs in {workdir}", flush=True)
+            print(f"qtask: {label} -- asking {args.model} ...", flush=True)
+            text, stop, usage = call_model(args.url, args.model, prompt,
+                                           args.max_tokens, args.timeout)
+            dt = time.time() - t0
+            print(f"qtask:   {usage.get('input_tokens','?')} in / "
+                  f"{usage.get('output_tokens','?')} out in {dt:.0f}s (stop={stop})", flush=True)
+
+            if stop == "max_tokens":
+                print("qtask:   WARNING hit the token cap -- output is probably truncated; "
+                      "raise --max-tokens or split the task", flush=True)
+
+            code = extract_code(text)
+            if code is None:
+                failure = "Model replied with prose instead of a file. Reply with a code block only."
+                print("qtask:   no code block in reply", flush=True)
+                continue
+
+            last_attempt = code
+            os.makedirs(os.path.dirname(target) or ".", exist_ok=True)
+            with open(target, "w") as f:
+                f.write(code)
+
+            print(f"qtask:   running check: {args.check}", flush=True)
+            ok, out = run_check(args.check, workdir, args.check_timeout)
+            if ok:
+                print(f"qtask: PASS -- {rel} written and the check succeeded.")
+                if os.path.exists(backup):
+                    os.remove(backup)
+                return 0
+            failure = out
+            print("qtask:   check FAILED", flush=True)
+
+        # Out of attempts: leave the tree as we found it.
+        rej = target + ".qtask-rej"
+        shutil.copy2(target, rej)
+        if current is not None:
+            shutil.copy2(backup, target)
+            os.remove(backup)
+        else:
+            os.remove(target)
+        print(f"\nqtask: FAIL after {args.retries + 1} attempt(s). "
+              f"{rel} restored; last attempt saved to {os.path.basename(rej)}")
+        print("--- tail of the failing check ---")
+        print((failure or "")[-1500:])
+        return 1
+    except KeyboardInterrupt:
+        if current is not None and os.path.exists(backup):
+            shutil.copy2(backup, target)
+            os.remove(backup)
+        die("interrupted; target file restored", 130)
+
+
+if __name__ == "__main__":
+    sys.exit(main() or 0)

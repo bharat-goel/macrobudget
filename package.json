@@ -1,0 +1,11 @@
+{
+  "name": "macrobudget",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node --test 'test/visible/*.test.js'",
+    "test:hidden": "node --test 'test/hidden/*.test.js'",
+    "test:all": "node --test 'test/*/*.test.js'"
+  }
+}

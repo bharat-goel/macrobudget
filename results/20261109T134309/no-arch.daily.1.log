@@ -1,0 +1,42 @@
+qtask: check runs in .
+qtask: attempt 1/3 -- asking google/gemma-4-12b-qat ...
+qtask:   1366 in / 343 out in 41s (stop=end_turn)
+qtask:   running check: node --test 'test/visible/daily.test.js'
+qtask:   check FAILED
+qtask: attempt 2/3 -- asking google/gemma-4-12b-qat ...
+qtask:   2047 in / 332 out in 35s (stop=end_turn)
+qtask:   running check: node --test 'test/visible/daily.test.js'
+qtask:   check FAILED
+qtask: attempt 3/3 -- asking google/gemma-4-12b-qat ...
+qtask:   2662 in / 344 out in 41s (stop=end_turn)
+qtask:   running check: node --test 'test/visible/daily.test.js'
+qtask:   check FAILED
+
+qtask: FAIL after 3 attempt(s). src/daily.js restored; last attempt saved to daily.js.qtask-rej
+--- tail of the failing check ---
+file://./src/daily.js:2
+import { getScale } from "./scale.js";
+         ^^^^^^^^
+SyntaxError: The requested module './scale.js' does not provide an export named 'getScale'
+    at #asyncInstantiate (node:internal/modules/esm/module_job:319:21)
+    at async ModuleJob.run (node:internal/modules/esm/module_job:422:5)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:639:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+Node.js v25.8.2
+✖ test/visible/daily.test.js (68.500083ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 73.177
+
+✖ failing tests:
+
+test at test/visible/daily.test.js:1:1
+✖ test/visible/daily.test.js (68.500083ms)
+  'test failed'
+

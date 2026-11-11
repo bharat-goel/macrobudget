@@ -1,0 +1,51 @@
+qtask: attempt 1/3 -- asking google/gemma-4-12b-qat ...
+qtask:   1046 in / 2000 out in 200s (stop=max_tokens)
+qtask:   WARNING hit the token cap -- output is probably truncated; raise --max-tokens or split the task
+qtask:   running check: node --test 'test/visible/scale.test.js'
+qtask:   check FAILED
+qtask: attempt 2/3 -- asking google/gemma-4-12b-qat ...
+qtask:   3507 in / 531 out in 69s (stop=end_turn)
+qtask:   running check: node --test 'test/visible/scale.test.js'
+qtask:   check FAILED
+qtask: attempt 3/3 -- asking google/gemma-4-12b-qat ...
+qtask:   2701 in / 233 out in 32s (stop=end_turn)
+qtask:   running check: node --test 'test/visible/scale.test.js'
+qtask:   check FAILED
+
+qtask: FAIL after 3 attempt(s). src/scale.js restored; last attempt saved to scale.js.qtask-rej
+--- tail of the failing check ---
+cScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { kcal: 450, proteinCg: 450, carbsCg: 750, fiberCg: 1350, fatCg: 1650 },
+    expected: { kcal: 4, proteinCg: 4, carbsCg: 8, fiberCg: 14, fatCg: 16 },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at test/visible/scale.test.js:36:1
+✖ kcal comes from the label, never from the macros (0.096542ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  10000 !== 100
+  
+      at TestContext.<anonymous> (file://./test/visible/scale.test.js:37:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 10000,
+    expected: 100,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+

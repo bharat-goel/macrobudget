@@ -1,0 +1,14 @@
+✔ hidden: roundHalfEven ties (0.513958ms)
+✔ hidden: roundHalfEven non-ties (0.0415ms)
+✔ hidden: scales labels (0.50775ms)
+✔ hidden: half-to-even on exact ties (0.03575ms)
+✔ hidden: kcal is taken from the label (0.051583ms)
+✔ hidden: only the five nutrient keys, all integers (0.07525ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 67.13775

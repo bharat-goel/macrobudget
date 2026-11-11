@@ -1,0 +1,33 @@
+✔ hidden: gram and multiplier forms (0.852875ms)
+✔ hidden: serving form (0.090166ms)
+✔ hidden: non-string spec throws TypeError (0.206792ms)
+✖ hidden: malformed spec throws SyntaxError (0.430666ms)
+✔ hidden: zero grams throws RangeError (0.097834ms)
+✔ hidden: serving form with null servingGrams throws RangeError (0.051958ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 5
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 93.872083
+
+✖ failing tests:
+
+test at test/hidden/quantity.hidden.test.js:22:1
+✖ hidden: malformed spec throws SyntaxError (0.430666ms)
+  AssertionError [ERR_ASSERTION]: Missing expected exception (SyntaxError): expected SyntaxError for "x30g"
+      at TestContext.<anonymous> (file://./test/hidden/quantity.hidden.test.js:24:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1201:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:831:18)
+      at Test.postRun (node:internal/test_runner/test:1330:19)
+      at Test.run (node:internal/test_runner/test:1258:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    operator: 'throws',
+    diff: 'simple'
+  }
