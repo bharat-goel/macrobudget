@@ -8,14 +8,17 @@
 # and scale.js -- the cross-module contract is preserved, but a failure upstream
 # cannot cascade and corrupt the downstream measurement.
 set -u
-cd "$(dirname "$0")"
+ROOT=$(cd "$(dirname "$0")" && pwd) || exit 1
+cd "$ROOT" || exit 1
+[ -d "$ROOT/ref" ] || { echo "no ref/ in $ROOT; refusing to touch src/" >&2; exit 1; }
+reset_src() { rm -rf "${ROOT:?}/src" && mkdir "$ROOT/src" && cp "$ROOT"/ref/*.js "$ROOT/src/"; }
 REPS=${REPS:-3}
 MODEL=${QTASK_MODEL:-google/gemma-4-12b-qat}
 OUT=results/$(date +%Y%m%dT%H%M%S)
 mkdir -p "$OUT"
 
 seed() { # seed src/ with ref, minus the target module
-  rm -rf src; mkdir src; cp ref/*.js src/; rm -f "src/$1.js"
+  reset_src || exit 1; rm -f "src/$1.js"
 }
 
 task_for() {
@@ -62,5 +65,5 @@ for arm in $ARMS; do
   done
 done
 
-rm -rf src; mkdir src; cp ref/*.js src/
+reset_src || exit 1
 echo "--- results in $OUT ---"

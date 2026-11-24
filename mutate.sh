@@ -2,12 +2,15 @@
 # Cobra canary: each mutant breaks exactly one documented rule.
 # A rule that survives BOTH suites is a rule the benchmark cannot measure.
 set -u
-cd "$(dirname "$0")"
+ROOT=$(cd "$(dirname "$0")" && pwd) || exit 1
+cd "$ROOT" || exit 1
+[ -d "$ROOT/ref" ] || { echo "no ref/ in $ROOT; refusing to touch src/" >&2; exit 1; }
+reset_src() { rm -rf "${ROOT:?}/src" && mkdir "$ROOT/src" && cp "$ROOT"/ref/*.js "$ROOT/src/"; }
 
 run() { node --test "test/$1/*.test.js" >/dev/null 2>&1 && echo "SURVIVED" || echo "caught"; }
 
 apply() {
-  rm -rf src; mkdir src; cp ref/*.js src/
+  reset_src || exit 1
   case "$1" in
     round_half_up)
       perl -0pi -e 's/export function roundHalfEven\(x\) \{.*?\n\}/export function roundHalfEven(x) {\n  return Math.round(x);\n}/s' src/scale.js ;;
@@ -35,4 +38,4 @@ for m in round_half_up kcal_from_macros net_carbs_per_entry clamp_remaining carb
   apply "$m"
   printf "%-22s %-10s %-10s\n" "$m" "$(run visible)" "$(run hidden)"
 done
-rm -rf src; mkdir src; cp ref/*.js src/
+reset_src || exit 1
